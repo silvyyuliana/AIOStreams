@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'packages/**'
-      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
       - 'package.json'
       - 'tsconfig.json'
       - 'tsconfig.base.json'
