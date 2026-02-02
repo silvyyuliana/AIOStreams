@@ -1,0 +1,93 @@
+name: Publish Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional: Custom image tag (defaults to branch name and SHA)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    name: Build and Publish Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Calculate Image Tags
+        id: meta
+        env:
+          CUSTOM_TAG: ${{ inputs.tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          REPO_LOWER=$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]')
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          
+          # Clean branch name (replace / with -)
+          CLEAN_BRANCH=$(echo "${GITHUB_REF_NAME}" | sed 's/\//-/g')
+          
+          # Build tags list
+          TAGS=""
+          
+          # Always add the SHA tag
+          TAGS="ghcr.io/${REPO_LOWER}/aiostreams:sha-${SHORT_SHA}"
+          
+          # Add branch tag
+          TAGS="${TAGS},ghcr.io/${REPO_LOWER}/aiostreams:${CLEAN_BRANCH}"
+          
+          # If custom tag is provided, add it
+          if [[ -n "${CUSTOM_TAG}" ]]; then
+            TAGS="${TAGS},ghcr.io/${REPO_LOWER}/aiostreams:${CUSTOM_TAG}"
+          fi
+          
+          echo "tags=${TAGS}" >> "${GITHUB_OUTPUT}"
+          echo "Generated tags: ${TAGS}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate metadata
+        run: |
+          node scripts/generateMetadata.cjs --channel=stable
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          push: true
+          context: .
+          file: ./Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
