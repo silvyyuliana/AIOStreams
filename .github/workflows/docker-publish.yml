@@ -66,7 +66,7 @@ jobs:
           echo "tags=${TAGS}" >> "${GITHUB_OUTPUT}"
           echo "Generated tags: ${TAGS}"
 
-      - name: Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -79,7 +79,7 @@ jobs:
 
       - name: Generate metadata
         run: |
-          node scripts/generateMetadata.cjs --channel=dev
+          node scripts/generateMetadata.cjs --channel=stable
 
       - name: Build & Push
         uses: docker/build-push-action@v6
