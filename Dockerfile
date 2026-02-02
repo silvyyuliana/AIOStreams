@@ -19,8 +19,16 @@ COPY packages/frontend/package*.json ./packages/frontend/
 COPY pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Install dependencies.
-RUN pnpm install --frozen-lockfile
+# Install build tools for native dependencies (sqlite3 ARM64 support).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies and rebuild sqlite3 for ARM64 compatibility.
+RUN pnpm install --frozen-lockfile && \
+    pnpm rebuild sqlite3
 
 # Copy source files.
 COPY tsconfig.*json ./
@@ -41,7 +49,8 @@ RUN rm -rf packages/core/node_modules
 RUN rm -rf packages/server/node_modules
 RUN rm -rf packages/frontend/node_modules
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile && \
+    pnpm rebuild sqlite3
 
 
 FROM builder AS runtime
