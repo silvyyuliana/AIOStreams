@@ -26,6 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Force building native modules from source to ensure compatibility with glibc.
+# This prevents downloading pre-built binaries that may be compiled for musl (Alpine).
+ENV npm_config_build_from_source=true
+
 # Install dependencies and rebuild sqlite3 for ARM64 compatibility.
 RUN pnpm install --frozen-lockfile && \
     pnpm rebuild sqlite3
