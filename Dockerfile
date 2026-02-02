@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install dependencies and rebuild sqlite3 for ARM64 compatibility.
 RUN pnpm install --frozen-lockfile && \
-    npm rebuild sqlite3 --build-from-source
+    pnpm rebuild sqlite3
 
 # Copy source files.
 COPY tsconfig.*json ./
@@ -50,7 +50,7 @@ RUN rm -rf packages/server/node_modules
 RUN rm -rf packages/frontend/node_modules
 
 RUN pnpm install --prod --frozen-lockfile && \
-    npm rebuild sqlite3 --build-from-source
+    pnpm rebuild sqlite3
 
 
 FROM builder AS runtime
